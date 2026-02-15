@@ -1,6 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
+from dateutil.relativedelta import relativedelta
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q, Sum
@@ -174,6 +175,27 @@ class TransactionCreateView(LoginRequiredMixin, CreateView):
         # Check for balance warning (non-blocking)
         if hasattr(form, 'balance_warning') and form.balance_warning:
             messages.warning(self.request, form.balance_warning)
+
+        installments = form.cleaned_data.get('installments', 1) or 1
+        if installments > 1:
+            transaction = form.save(commit=False)
+            base_date = transaction.transaction_date
+
+            for i in range(installments):
+                created_transaction = Transaction.objects.create(
+                    account=transaction.account,
+                    category=transaction.category,
+                    transaction_type=transaction.transaction_type,
+                    amount=transaction.amount,
+                    transaction_date=base_date + relativedelta(months=i),
+                    description=f'{transaction.description} ({i + 1}/{installments})'.strip()
+                )
+                if i == 0:
+                    self.object = created_transaction
+
+            messages.success(self.request, f'{installments} transações criadas com sucesso!')
+            return HttpResponseRedirect(self.get_success_url())
+
         messages.success(self.request, 'Transação criada com sucesso!')
         return super().form_valid(form)
 
