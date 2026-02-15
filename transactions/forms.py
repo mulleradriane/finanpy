@@ -31,6 +31,14 @@ class TransactionForm(forms.ModelForm):
         - Prevents cross-user data access
     '''
 
+    installments = forms.IntegerField(
+        required=False,
+        min_value=1,
+        initial=1,
+        label='Quantidade de Meses',
+        help_text='Para gastos recorrentes, informe por quantos meses deseja lançar esta transação.'
+    )
+
     def __init__(self, *args, user=None, **kwargs):
         '''
         Initialize form with user-specific querysets and widget styling.
@@ -47,6 +55,10 @@ class TransactionForm(forms.ModelForm):
         self.user = user
         super().__init__(*args, **kwargs)
         self._original_instance = None
+
+        # Hide installments field when editing
+        if self.instance.pk:
+            self.fields.pop('installments', None)
 
         if self.instance.pk:
             try:
@@ -88,6 +100,12 @@ class TransactionForm(forms.ModelForm):
             'placeholder': 'Descreva esta transação',
         })
 
+        if 'installments' in self.fields:
+            self.fields['installments'].widget.attrs.update({
+                'class': 'w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200',
+                'placeholder': '1',
+            })
+
         if not self.instance.pk:
             self.fields['transaction_date'].initial = date.today().isoformat()
 
@@ -127,21 +145,13 @@ class TransactionForm(forms.ModelForm):
 
     def clean_transaction_date(self):
         '''
-        Validate that transaction date is not in the future.
-
-        This prevents users from creating transactions for dates that
-        haven't occurred yet, maintaining data integrity.
+        Return the transaction date. Future date validation is handled in clean()
+        to support recurring transactions.
 
         Returns:
-            date: The validated transaction date
-
-        Raises:
-            ValidationError: If date is in the future
+            date: The transaction date
         '''
-        transaction_date = self.cleaned_data.get('transaction_date')
-        if transaction_date and transaction_date > date.today():
-            raise forms.ValidationError('A data da transação não pode ser no futuro.')
-        return transaction_date
+        return self.cleaned_data.get('transaction_date')
 
     def clean(self):
         '''
@@ -177,6 +187,15 @@ class TransactionForm(forms.ModelForm):
             self.add_error(
                 'category',
                 'A categoria selecionada deve corresponder ao tipo de transação.',
+            )
+
+        # Validate future date
+        transaction_date = cleaned_data.get('transaction_date')
+        installments = cleaned_data.get('installments', 1) or 1
+        if installments == 1 and transaction_date and transaction_date > date.today():
+            self.add_error(
+                'transaction_date',
+                'A data da transação não pode ser no futuro.',
             )
 
         self.balance_warning = None
