@@ -18,7 +18,7 @@
         </div>
 
         <!-- Statistics Cards Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
             <!-- Total Balance Card -->
             <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700">
                 <div class="flex items-center justify-between mb-2">
@@ -78,6 +78,20 @@
                     {% if month_balance >= 0 %}Resultado positivo{% else %}Resultado negativo{% endif %}
                 </p>
             </div>
+
+            <!-- Total Committed Card -->
+            <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-slate-400 text-sm font-semibold uppercase tracking-wide">Total Comprometido</h3>
+                    <div class="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold text-orange-500">{{ total_committed|currency }}</p>
+                <p class="text-slate-400 text-sm mt-2">Gastos futuros agendados</p>
+            </div>
         </div>
 
         <!-- Charts Section -->
@@ -115,6 +129,18 @@
                 <div class="relative" style="height: 300px;">
                     <canvas id="monthlyLineChart"></canvas>
                 </div>
+            </div>
+        </div>
+
+        <!-- Future Projections Chart -->
+        <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700 mb-8">
+            <h2 class="text-xl font-semibold text-slate-100 mb-4">
+                Projeção de Gastos
+            </h2>
+            <p class="text-slate-400 text-sm mb-6">Estimativa de gastos comprometidos para os próximos 12 meses</p>
+
+            <div class="relative" style="height: 350px;">
+                <canvas id="projectionBarChart"></canvas>
             </div>
         </div>
 
@@ -203,6 +229,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Parse chart data from Django context
     const categoryData = {{ category_chart_data|safe }};
     const monthlyData = {{ monthly_chart_data|safe }};
+    const projectionData = {{ projection_chart_data|safe }};
 
     // Chart.js default configuration for dark theme
     Chart.defaults.color = '#cbd5e1'; // slate-300
@@ -267,6 +294,80 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     {% endif %}
+
+    // Bar Chart - Future Projection
+    const projectionCtx = document.getElementById('projectionBarChart');
+    if (projectionCtx && projectionData) {
+        new Chart(projectionCtx, {
+            type: 'bar',
+            data: {
+                labels: projectionData.labels,
+                datasets: [{
+                    label: 'Gastos Comprometidos',
+                    data: projectionData.expense,
+                    backgroundColor: 'rgba(249, 115, 22, 0.6)', // orange-500 with opacity
+                    borderColor: '#f97316', // orange-500
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    hoverBackgroundColor: 'rgba(249, 115, 22, 0.8)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        titleColor: '#f1f5f9',
+                        bodyColor: '#cbd5e1',
+                        borderColor: '#334155',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.parsed.y || 0;
+                                return `Comprometido: R$ ${value.toFixed(2)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#334155',
+                            borderColor: '#475569'
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: {
+                                size: 11,
+                                family: 'Inter'
+                            },
+                            callback: function(value) {
+                                return 'R$ ' + value.toFixed(0);
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: {
+                                size: 11,
+                                family: 'Inter'
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
 
     // Line Chart - Monthly Evolution
     const lineCtx = document.getElementById('monthlyLineChart');
