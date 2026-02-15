@@ -177,12 +177,12 @@
             <div class="space-y-3">
                 {% for transaction in recent_transactions %}
                 <div class="bg-slate-700/50 rounded-lg p-4 border-l-4
-                            {% if transaction.transaction_type == 'INCOME' %}border-emerald-500{% else %}border-red-500{% endif %}">
+                            {% if not transaction.is_expense %}border-emerald-500{% else %}border-red-500{% endif %}">
                     <div class="flex items-center justify-between">
                         <div class="flex-1">
                             <div class="flex items-center space-x-3">
                                 <span class="px-2 py-1 rounded text-xs font-semibold
-                                           {% if transaction.transaction_type == 'INCOME' %}bg-emerald-500/20 text-emerald-400{% else %}bg-red-500/20 text-red-400{% endif %}">
+                                           {% if not transaction.is_expense %}bg-emerald-500/20 text-emerald-400{% else %}bg-red-500/20 text-red-400{% endif %}">
                                     {{ transaction.get_transaction_type_display }}
                                 </span>
                                 <p class="font-medium text-slate-100">{{ transaction.description|truncatewords:10 }}</p>
@@ -198,8 +198,8 @@
                             </div>
                         </div>
                         <div class="ml-4 text-right">
-                            <p class="text-lg font-bold {% if transaction.transaction_type == 'INCOME' %}text-emerald-500{% else %}text-red-500{% endif %}">
-                                {% if transaction.transaction_type == 'INCOME' %}+{% else %}-{% endif %}{{ transaction.amount|currency }}
+                            <p class="text-lg font-bold {% if not transaction.is_expense %}text-emerald-500{% else %}text-red-500{% endif %}">
+                                {% if not transaction.is_expense %}+{% else %}-{% endif %}{{ transaction.amount|currency }}
                             </p>
                         </div>
                     </div>

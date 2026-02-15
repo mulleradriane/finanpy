@@ -118,7 +118,7 @@ class TransactionListView(LoginRequiredMixin, ListView):
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
 
         expense_total = queryset.filter(
-            transaction_type=Transaction.TransactionType.EXPENSE
+            transaction_type__in=Transaction.get_expense_types()
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
 
         context.update({
@@ -162,6 +162,7 @@ class TransactionCreateView(LoginRequiredMixin, CreateView):
                 }
                 for category in categories_qs
             ],
+            'expense_types': Transaction.get_expense_types(),
             'is_editing': False,
         })
         return context
@@ -230,6 +231,7 @@ class TransactionUpdateView(LoginRequiredMixin, UpdateView):
                 }
                 for category in categories_qs
             ],
+            'expense_types': Transaction.get_expense_types(),
             'is_editing': True,
         })
         return context

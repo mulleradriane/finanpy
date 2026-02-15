@@ -197,11 +197,18 @@ class TransactionForm(forms.ModelForm):
         if category and self.user and category.user_id != self.user.id:
             self.add_error('category', 'Selecione uma categoria válida.')
 
-        if category and transaction_type and category.category_type != transaction_type:
-            self.add_error(
-                'category',
-                'A categoria selecionada deve corresponder ao tipo de transação.',
-            )
+        if category and transaction_type:
+            is_expense_type = transaction_type in Transaction.get_expense_types()
+            if is_expense_type and category.category_type != Category.CategoryType.EXPENSE:
+                self.add_error(
+                    'category',
+                    'A categoria selecionada deve ser do tipo Saída para esta transação.',
+                )
+            elif transaction_type == Transaction.TransactionType.INCOME and category.category_type != Category.CategoryType.INCOME:
+                self.add_error(
+                    'category',
+                    'A categoria selecionada deve ser do tipo Entrada para esta transação.',
+                )
 
         # Validate future date
         transaction_date = cleaned_data.get('transaction_date')
@@ -213,8 +220,9 @@ class TransactionForm(forms.ModelForm):
             )
 
         self.balance_warning = None
+        is_expense_type = transaction_type in Transaction.get_expense_types()
         if (
-            transaction_type == Transaction.TransactionType.EXPENSE
+            is_expense_type
             and account
             and amount
         ):
@@ -269,14 +277,14 @@ class TransactionForm(forms.ModelForm):
         Calculate transaction's effect on account balance.
 
         INCOME transactions add to balance (positive delta).
-        EXPENSE transactions subtract from balance (negative delta).
+        Expense-like transactions subtract from balance (negative delta).
 
         Args:
             amount: Transaction amount (Decimal, always positive)
-            transaction_type: Transaction.TransactionType.INCOME or EXPENSE
+            transaction_type: Transaction.TransactionType choices
 
         Returns:
-            Decimal: Positive for INCOME, negative for EXPENSE
+            Decimal: Positive for INCOME, negative for others
 
         Example:
             >>> _calculate_delta(Decimal('100'), 'INCOME')

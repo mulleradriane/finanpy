@@ -90,7 +90,7 @@
                         {% endfor %}
                     </div>
                     {% endif %}
-                    <p class="text-slate-500 text-xs mt-1">Escolha se trata-se de uma entrada (INCOME) ou saída (EXPENSE).</p>
+                    <p class="text-slate-500 text-xs mt-1">Escolha o tipo da transação (Entrada, Saída, Crédito, Débito ou PIX).</p>
                 </div>
 
                 <div>
@@ -225,6 +225,7 @@
 </div>
 
 {{ categories_data|json_script:'categories-data' }}
+{{ expense_types|json_script:'expense-types' }}
 <script>
     (function() {
         const categorySelect = document.getElementById('{{ form.category.id_for_label }}');
@@ -239,6 +240,9 @@
             const selectedValue = categorySelect.value;
             let hasVisibleOption = false;
 
+            const expenseTypes = JSON.parse(document.getElementById('expense-types').textContent || '[]');
+            const targetCategoryType = expenseTypes.includes(selectedType) ? 'EXPENSE' : 'INCOME';
+
             Array.from(categorySelect.options).forEach((option) => {
                 if (!option.value) {
                     option.hidden = false;
@@ -246,7 +250,7 @@
                 }
 
                 const metadata = categoriesData.find((item) => item.id === option.value);
-                const matches = metadata ? metadata.category_type === selectedType : true;
+                const matches = metadata ? metadata.category_type === targetCategoryType : true;
                 option.hidden = !matches;
 
                 if (matches) {

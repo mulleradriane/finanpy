@@ -56,9 +56,27 @@ class Transaction(models.Model):
     '''
 
     class TransactionType(models.TextChoices):
-        '''Enum for transaction types: INCOME for income, EXPENSE for expenses.'''
+        '''Enum for transaction types: INCOME for income, EXPENSE for expenses, and others.'''
         INCOME = 'INCOME', 'Entrada'
         EXPENSE = 'EXPENSE', 'Saída'
+        CREDITO = 'CREDITO', 'Crédito'
+        DEBITO = 'DEBITO', 'Débito'
+        PIX = 'PIX', 'PIX'
+
+    @classmethod
+    def get_expense_types(cls):
+        """Returns a list of all transaction types that represent an expense."""
+        return [
+            cls.TransactionType.EXPENSE,
+            cls.TransactionType.CREDITO,
+            cls.TransactionType.DEBITO,
+            cls.TransactionType.PIX,
+        ]
+
+    @property
+    def is_expense(self):
+        """Returns True if the transaction represents an expense."""
+        return self.transaction_type in self.get_expense_types()
 
     account = models.ForeignKey(
         Account,
