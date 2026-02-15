@@ -102,13 +102,12 @@
                             <span class="text-slate-400 font-medium">R$</span>
                         </div>
                         <input
-                            type="number"
+                            type="text"
                             name="{{ form.amount.name }}"
                             id="{{ form.amount.id_for_label }}"
                             value="{% if form.amount.value %}{{ form.amount.value }}{% endif %}"
-                            step="0.01"
-                            min="0.01"
                             placeholder="0,00"
+                            inputmode="numeric"
                             class="w-full pl-12 pr-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200"
                         >
                     </div>
@@ -269,6 +268,45 @@
             syncCategoryOptions(typeSelect.value);
             typeSelect.addEventListener('change', function(event) {
                 syncCategoryOptions(event.target.value);
+            });
+        }
+
+        // Amount Mask
+        const amountInput = document.getElementById('{{ form.amount.id_for_label }}');
+        if (amountInput) {
+            function formatCurrency(value) {
+                if (!value) return '';
+                // Remove non-digits
+                let digits = value.toString().replace(/\D/g, '');
+                if (!digits) return '';
+
+                // Format as BRL
+                return new Intl.NumberFormat('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(parseFloat(digits) / 100);
+            }
+
+            // Initial format if value exists
+            if (amountInput.value) {
+                // If it comes from Django, it might have a dot as decimal separator
+                let initialValue = amountInput.value.replace(',', '.');
+                if (!isNaN(parseFloat(initialValue))) {
+                    // Convert to cents for our formatCurrency function
+                    let cents = Math.round(parseFloat(initialValue) * 100);
+                    amountInput.value = formatCurrency(cents);
+                }
+            }
+
+            amountInput.addEventListener('input', function(e) {
+                e.target.value = formatCurrency(e.target.value);
+            });
+
+            // Before submitting, convert back to decimal with dot for Django
+            amountInput.closest('form').addEventListener('submit', function() {
+                if (amountInput.value) {
+                    amountInput.value = amountInput.value.replace(/\./g, '').replace(',', '.');
+                }
             });
         }
     })();
