@@ -195,7 +195,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         # 3. Calculate current month expenses
         month_expenses_data = Transaction.objects.filter(
             account__user=user,
-            transaction_type__in=Transaction.get_expense_types(),
+            transaction_type=Transaction.TransactionType.EXPENSE,
             transaction_date__gte=current_month_start
         ).aggregate(
             total=Sum('amount')
@@ -219,7 +219,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         # 6. Get top 5 expense categories for current month
         top_categories = Transaction.objects.filter(
             account__user=user,
-            transaction_type__in=Transaction.get_expense_types(),
+            transaction_type=Transaction.TransactionType.EXPENSE,
             transaction_date__gte=current_month_start
         ).values(
             'category__name',
@@ -239,7 +239,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         # 8. Calculate future committed expenses
         total_committed_data = Transaction.objects.filter(
             account__user=user,
-            transaction_type__in=Transaction.get_expense_types(),
+            transaction_type=Transaction.TransactionType.EXPENSE,
             transaction_date__gt=date.today()
         ).aggregate(
             total=Sum('amount')
@@ -278,7 +278,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             # Query expenses for this month
             month_exp = Transaction.objects.filter(
                 account__user=user,
-                transaction_type__in=Transaction.get_expense_types(),
+                transaction_type=Transaction.TransactionType.EXPENSE,
                 transaction_date__gte=month_start,
                 transaction_date__lt=next_month_start
             ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
@@ -306,7 +306,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
             month_exp = Transaction.objects.filter(
                 account__user=user,
-                transaction_type__in=Transaction.get_expense_types(),
+                transaction_type=Transaction.TransactionType.EXPENSE,
                 transaction_date__gte=month_start,
                 transaction_date__lt=next_month_start
             ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')

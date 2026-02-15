@@ -31,14 +31,20 @@ def _calculate_delta(amount: Decimal, transaction_type: str) -> Decimal:
     Calculate the balance delta based on transaction type.
 
     INCOME transactions return positive delta (adds to balance).
-    Expense-like transactions return negative delta (subtracts from balance).
+    EXPENSE transactions return negative delta (subtracts from balance).
 
     Args:
         amount: Transaction amount (always positive)
-        transaction_type: Transaction.TransactionType choices
+        transaction_type: Transaction.TransactionType.INCOME or EXPENSE
 
     Returns:
-        Decimal: Positive for INCOME, negative for others
+        Decimal: Positive for INCOME, negative for EXPENSE
+
+    Example:
+        >>> _calculate_delta(Decimal('100.00'), 'INCOME')
+        Decimal('100.00')
+        >>> _calculate_delta(Decimal('100.00'), 'EXPENSE')
+        Decimal('-100.00')
     '''
     if transaction_type == Transaction.TransactionType.INCOME:
         return amount
