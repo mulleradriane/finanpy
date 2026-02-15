@@ -44,12 +44,22 @@
 
                 <a href="{% url 'transactions:transaction_list' %}"
                    class="px-4 py-2 rounded-lg font-medium transition-all
-                          {% if 'transactions' in request.resolver_match.namespace %}
+                          {% if 'transactions' in request.resolver_match.namespace and request.resolver_match.url_name != 'analytics' %}
                               bg-slate-700 text-purple-400
                           {% else %}
                               text-slate-300 hover:bg-slate-700 hover:text-slate-100
                           {% endif %}">
                     Transações
+                </a>
+
+                <a href="{% url 'transactions:analytics' %}"
+                   class="px-4 py-2 rounded-lg font-medium transition-all
+                          {% if request.resolver_match.url_name == 'analytics' %}
+                              bg-slate-700 text-purple-400
+                          {% else %}
+                              text-slate-300 hover:bg-slate-700 hover:text-slate-100
+                          {% endif %}">
+                    Análises
                 </a>
             </div>
 
@@ -188,12 +198,22 @@
 
             <a href="{% url 'transactions:transaction_list' %}"
                class="block px-4 py-3 rounded-lg font-medium transition-all
-                      {% if 'transactions' in request.resolver_match.namespace %}
+                      {% if 'transactions' in request.resolver_match.namespace and request.resolver_match.url_name != 'analytics' %}
                           bg-slate-700 text-purple-400
                       {% else %}
                           text-slate-300 hover:bg-slate-700 hover:text-slate-100
                       {% endif %}">
                 Transações
+            </a>
+
+            <a href="{% url 'transactions:analytics' %}"
+               class="block px-4 py-3 rounded-lg font-medium transition-all
+                      {% if request.resolver_match.url_name == 'analytics' %}
+                          bg-slate-700 text-purple-400
+                      {% else %}
+                          text-slate-300 hover:bg-slate-700 hover:text-slate-100
+                      {% endif %}">
+                Análises
             </a>
 
             <!-- Profile Links -->

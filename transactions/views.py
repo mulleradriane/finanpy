@@ -1,4 +1,5 @@
-from datetime import date
+import json
+from datetime import date, datetime
 from decimal import Decimal
 
 from dateutil.relativedelta import relativedelta
@@ -8,7 +9,9 @@ from django.db.models import Q, Sum
 from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy
 from django.utils.dateparse import parse_date
-from django.views.generic import CreateView, DeleteView, ListView, UpdateView
+from django.views.generic import (
+    CreateView, DeleteView, ListView, TemplateView, UpdateView
+)
 
 from accounts.models import Account
 from categories.models import Category
@@ -286,3 +289,142 @@ class TransactionDeleteView(LoginRequiredMixin, DeleteView):
         self.object.delete()
         messages.success(self.request, 'Transação excluída com sucesso!')
         return HttpResponseRedirect(success_url)
+
+
+class AnalyticsView(LoginRequiredMixin, TemplateView):
+    """
+    View para exibição de análises e visualizações financeiras detalhadas.
+    """
+    template_name = 'transactions/analytics.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        today = date.today()
+        year = today.year
+
+        # 1. Totais Anuais (Entradas, Saídas, Saldo)
+        annual_income = Transaction.objects.filter(
+            account__user=user,
+            transaction_date__year=year,
+            transaction_type=Transaction.TransactionType.INCOME
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+        annual_expenses = Transaction.objects.filter(
+            account__user=user,
+            transaction_date__year=year,
+            transaction_type__in=Transaction.get_expense_types()
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+        annual_balance = annual_income - annual_expenses
+
+        # 2. Totais Mensais para o ano corrente
+        monthly_data = []
+        month_labels = [
+            'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+            'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+        ]
+
+        income_series = []
+        expense_series = []
+        balance_series = []
+
+        for m in range(1, 13):
+            m_income = Transaction.objects.filter(
+                account__user=user,
+                transaction_date__year=year,
+                transaction_date__month=m,
+                transaction_type=Transaction.TransactionType.INCOME
+            ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+            m_expense = Transaction.objects.filter(
+                account__user=user,
+                transaction_date__year=year,
+                transaction_date__month=m,
+                transaction_type__in=Transaction.get_expense_types()
+            ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+            m_balance = m_income - m_expense
+
+            income_series.append(float(m_income))
+            expense_series.append(float(m_expense))
+            balance_series.append(float(m_balance))
+
+            monthly_data.append({
+                'month': month_labels[m-1],
+                'income': m_income,
+                'expense': m_expense,
+                'balance': m_balance
+            })
+
+        # 3. Investimentos (Mensal e Anual)
+        # Procuramos por categorias que contenham "Investimentos" no nome
+        annual_investments = Transaction.objects.filter(
+            account__user=user,
+            transaction_date__year=year,
+            category__name__icontains='Investimentos'
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+        month_investments = Transaction.objects.filter(
+            account__user=user,
+            transaction_date__year=year,
+            transaction_date__month=today.month,
+            category__name__icontains='Investimentos'
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+        # 4. Total por Categoria (Mensal e Anual)
+        categories = Category.objects.filter(user=user)
+        category_analytics = []
+
+        for category in categories:
+            c_annual = Transaction.objects.filter(
+                account__user=user,
+                transaction_date__year=year,
+                category=category
+            ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+            c_month = Transaction.objects.filter(
+                account__user=user,
+                transaction_date__year=year,
+                transaction_date__month=today.month,
+                category=category
+            ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+            if c_annual > 0:
+                category_analytics.append({
+                    'name': category.name,
+                    'color': category.color,
+                    'type': category.get_category_type_display(),
+                    'annual': c_annual,
+                    'month': c_month
+                })
+
+        # Ordenar categorias por total anual
+        category_analytics = sorted(category_analytics, key=lambda x: x['annual'], reverse=True)
+
+        # Dados para gráfico de categorias (Anual)
+        category_labels = [c['name'] for c in category_analytics if c['annual'] > 0]
+        category_values = [float(c['annual']) for c in category_analytics if c['annual'] > 0]
+        category_colors = [c['color'] for c in category_analytics if c['annual'] > 0]
+
+        context.update({
+            'year': year,
+            'annual_income': annual_income,
+            'annual_expenses': annual_expenses,
+            'annual_balance': annual_balance,
+            'monthly_data': monthly_data,
+            'annual_investments': annual_investments,
+            'month_investments': month_investments,
+            'category_analytics': category_analytics,
+            'current_month_name': month_labels[today.month-1],
+            # JSON para Charts
+            'chart_monthly_labels': json.dumps(month_labels),
+            'chart_income_series': json.dumps(income_series),
+            'chart_expense_series': json.dumps(expense_series),
+            'chart_balance_series': json.dumps(balance_series),
+            'chart_category_labels': json.dumps(category_labels),
+            'chart_category_values': json.dumps(category_values),
+            'chart_category_colors': json.dumps(category_colors),
+        })
+
+        return context

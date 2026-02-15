@@ -186,3 +186,88 @@ class NewTransactionTypeTest(TestCase):
         self.account.refresh_from_db()
         # PIX should be treated as expense: 1000 - 20 = 980
         self.assertEqual(self.account.balance, Decimal('980.00'))
+
+class AnalyticsViewTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email='test_analytics@example.com', password='password123')
+        self.client.login(email='test_analytics@example.com', password='password123')
+
+        self.account = Account.objects.create(
+            user=self.user,
+            name='Analytics Account',
+            bank_name='Test Bank',
+            account_type=Account.CHECKING,
+            balance=Decimal('2000.00')
+        )
+
+        self.cat_income = Category.objects.get(
+            user=self.user,
+            name='Salário'
+        )
+
+        self.cat_expense = Category.objects.get(
+            user=self.user,
+            name='Alimentação'
+        )
+
+        self.cat_invest = Category.objects.get(
+            user=self.user,
+            name='Investimentos'
+        )
+
+        # Create some transactions for current year
+        today = date.today()
+
+        # Income
+        Transaction.objects.create(
+            account=self.account,
+            category=self.cat_income,
+            transaction_type=Transaction.TransactionType.INCOME,
+            amount=Decimal('5000.00'),
+            transaction_date=today.replace(day=1),
+            description='Salário'
+        )
+
+        # Expense
+        Transaction.objects.create(
+            account=self.account,
+            category=self.cat_expense,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal('1000.00'),
+            transaction_date=today.replace(day=2),
+            description='Supermercado'
+        )
+
+        # Investment
+        Transaction.objects.create(
+            account=self.account,
+            category=self.cat_invest,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal('500.00'),
+            transaction_date=today.replace(day=3),
+            description='Ações'
+        )
+
+    def test_analytics_view_status_code(self):
+        url = reverse('transactions:analytics')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'transactions/analytics.html')
+
+    def test_analytics_context_data(self):
+        url = reverse('transactions:analytics')
+        response = self.client.get(url)
+
+        self.assertEqual(response.context['annual_income'], Decimal('5000.00'))
+        self.assertEqual(response.context['annual_expenses'], Decimal('1500.00')) # 1000 + 500
+        self.assertEqual(response.context['annual_balance'], Decimal('3500.00'))
+        self.assertEqual(response.context['annual_investments'], Decimal('500.00'))
+
+        # Check current month investments
+        self.assertEqual(response.context['month_investments'], Decimal('500.00'))
+
+        # Check category analytics
+        categories = response.context['category_analytics']
+        self.assertTrue(any(c['name'] == 'Salário' and c['annual'] == Decimal('5000.00') for c in categories))
+        self.assertTrue(any(c['name'] == 'Alimentação' and c['annual'] == Decimal('1000.00') for c in categories))
+        self.assertTrue(any(c['name'] == 'Investimentos' and c['annual'] == Decimal('500.00') for c in categories))
