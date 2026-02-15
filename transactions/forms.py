@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from django import forms
+from django.db.models import Count
 
 from accounts.models import Account
 from categories.models import Category
@@ -72,6 +73,18 @@ class TransactionForm(forms.ModelForm):
             self.fields['account'].queryset = Account.objects.filter(
                 user=self.user
             ).order_by('name')
+
+            # Set initial account to the most used one if creating a new transaction
+            if not self.instance.pk:
+                most_used_account = Account.objects.filter(
+                    user=self.user
+                ).annotate(
+                    transaction_count=Count('transactions')
+                ).order_by('-transaction_count').first()
+
+                if most_used_account:
+                    self.fields['account'].initial = most_used_account
+
             self.fields['category'].queryset = Category.objects.filter(
                 user=self.user
             ).order_by('name')
@@ -85,10 +98,10 @@ class TransactionForm(forms.ModelForm):
         self.fields['transaction_type'].widget.attrs.update({
             'class': 'form-select w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200',
         })
-        self.fields['amount'].widget.attrs.update({
+        self.fields['amount'].widget = forms.TextInput(attrs={
             'class': 'w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200',
             'placeholder': '0,00',
-            'step': '0.01',
+            'inputmode': 'numeric',
         })
         self.fields['transaction_date'].widget = forms.DateInput(attrs={
             'type': 'date',
@@ -108,6 +121,7 @@ class TransactionForm(forms.ModelForm):
 
         if not self.instance.pk:
             self.fields['transaction_date'].initial = date.today().isoformat()
+            self.fields['transaction_type'].initial = Transaction.TransactionType.EXPENSE
 
     class Meta:
         model = Transaction
