@@ -211,7 +211,7 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                {% if transaction.transaction_type == 'INCOME' %}
+                                {% if not transaction.is_expense %}
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400">
                                     {{ transaction.get_transaction_type_display }}
                                 </span>
@@ -221,8 +221,8 @@
                                 </span>
                                 {% endif %}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold {% if transaction.transaction_type == 'INCOME' %}text-emerald-400{% else %}text-red-400{% endif %}">
-                                {% if transaction.transaction_type == 'INCOME' %}+{% else %}-{% endif %} {{ transaction.amount|currency }}
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold {% if not transaction.is_expense %}text-emerald-400{% else %}text-red-400{% endif %}">
+                                {% if not transaction.is_expense %}+{% else %}-{% endif %} {{ transaction.amount|currency }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
                                 <div class="flex items-center justify-end gap-2">
