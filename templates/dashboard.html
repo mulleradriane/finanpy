@@ -118,6 +118,24 @@
             </div>
         </div>
 
+        <!-- Future Projection Section -->
+        <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700 mb-8">
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                <div>
+                    <h2 class="text-xl font-semibold text-slate-100">Projeção de Gastos Comprometidos</h2>
+                    <p class="text-slate-400 text-sm">Visualização dos próximos 12 meses baseada em suas parcelas e gastos recorrentes</p>
+                </div>
+                <div class="bg-slate-700/50 rounded-lg px-4 py-2 border border-slate-600">
+                    <p class="text-slate-400 text-xs uppercase font-semibold tracking-wider">Total Comprometido (1 ano)</p>
+                    <p class="text-2xl font-bold text-amber-500">{{ total_projected_commitment|currency }}</p>
+                </div>
+            </div>
+
+            <div class="relative" style="height: 300px;">
+                <canvas id="projectionLineChart"></canvas>
+            </div>
+        </div>
+
         <!-- Quick Actions -->
         <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700 mb-8">
             <h2 class="text-xl font-semibold text-slate-100 mb-4">Ações Rápidas</h2>
@@ -203,6 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Parse chart data from Django context
     const categoryData = {{ category_chart_data|safe }};
     const monthlyData = {{ monthly_chart_data|safe }};
+    const projectionData = {{ projection_chart_data|safe }};
 
     // Chart.js default configuration for dark theme
     Chart.defaults.color = '#cbd5e1'; // slate-300
@@ -376,6 +395,73 @@ document.addEventListener('DOMContentLoaded', function() {
                                 size: 11,
                                 family: 'Inter'
                             }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Line Chart - Future Projection
+    const projectionCtx = document.getElementById('projectionLineChart');
+    if (projectionCtx && projectionData) {
+        new Chart(projectionCtx, {
+            type: 'bar',
+            data: {
+                labels: projectionData.labels,
+                datasets: [
+                    {
+                        label: 'Gasto Comprometido',
+                        data: projectionData.expense,
+                        backgroundColor: 'rgba(245, 158, 11, 0.2)', // amber-500
+                        borderColor: '#f59e0b',
+                        borderWidth: 2,
+                        borderRadius: 4,
+                        hoverBackgroundColor: 'rgba(245, 158, 11, 0.4)',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        titleColor: '#f1f5f9',
+                        bodyColor: '#cbd5e1',
+                        borderColor: '#334155',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            label: function(context) {
+                                return `Comprometido: R$ ${context.parsed.y.toFixed(2)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#334155',
+                            borderColor: '#475569'
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            callback: function(value) {
+                                return 'R$ ' + value.toFixed(0);
+                            }
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#94a3b8'
                         }
                     }
                 }

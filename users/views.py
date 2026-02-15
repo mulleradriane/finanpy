@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+from dateutil.relativedelta import relativedelta
 from django.contrib import messages
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -289,6 +290,36 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             'expense': expense_data
         }
 
+        # 10. Prepare data for future projection (next 12 months)
+        projection_labels = []
+        projection_expense_data = []
+
+        for i in range(1, 13):
+            # Calculate future month start and end
+            target_date = now + relativedelta(months=i)
+            month_start = target_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+            if month_start.month == 12:
+                next_month_start = month_start.replace(year=month_start.year + 1, month=1)
+            else:
+                next_month_start = month_start.replace(month=month_start.month + 1)
+
+            # Query committed expenses for this future month
+            month_exp = Transaction.objects.filter(
+                account__user=user,
+                transaction_type=Transaction.TransactionType.EXPENSE,
+                transaction_date__gte=month_start,
+                transaction_date__lt=next_month_start
+            ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+            projection_labels.append(month_start.strftime('%b/%y'))
+            projection_expense_data.append(float(month_exp))
+
+        projection_chart_data = {
+            'labels': projection_labels,
+            'expense': projection_expense_data
+        }
+
         # Add all data to context
         context.update({
             'user': user,
@@ -303,6 +334,8 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             # Chart data
             'category_chart_data': json.dumps(category_chart_data),
             'monthly_chart_data': json.dumps(monthly_chart_data),
+            'projection_chart_data': json.dumps(projection_chart_data),
+            'total_projected_commitment': sum(projection_expense_data),
         })
 
         return context
